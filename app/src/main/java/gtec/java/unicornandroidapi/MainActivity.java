@@ -98,11 +98,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             StartReceiverWork();
             while(_receiverRunning) {
                 try {
+                    goWork = false;
                     float[] data = _unicorn.GetData(); // 8X[EEG] 3X[ACC] 3X[Gyroscope] 3x[...] 1X[timestep]
                     _cnt++;
                     dataA[cnT % S_cnT] = data;
                     cnT++;
-                    goWork = false;
                     dataF = genFunc.TransPose(dataA, cnT);
                     goWork = true;
                     /*if(0 == 0) {
@@ -142,6 +142,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(goWork){
                     try {
                         // Work (dataF, cnT);
+                        if(0 == 0) {
+                            Handler mainHandler = new Handler( _context.getMainLooper());
+                            Runnable myRunnable = new Runnable() {
+                                @Override
+                                public void run(){
+                                    String message = _tvState.getText().toString();
+                                    message = Integer.toString(cnT);
+                                    _tvState.setText(message);
+                                }
+                            };
+                            mainHandler.post(myRunnable);
+                        }
                     } catch (Exception ex) {
                         Handler mainHandler = new Handler( _context.getMainLooper());
                         Runnable myRunnable = new Runnable() {
