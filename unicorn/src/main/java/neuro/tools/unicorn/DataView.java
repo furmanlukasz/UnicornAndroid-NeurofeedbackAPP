@@ -1,5 +1,4 @@
 package neuro.tools.unicorn;
 
-public class DataAnalysis {
-
+public class DataView {
 }

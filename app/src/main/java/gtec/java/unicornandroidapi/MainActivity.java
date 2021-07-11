@@ -29,16 +29,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView _tvState = null;
     private Unicorn _unicorn = null;
     private Thread _receiver;
-    private Thread _receiverrWork;
+    private Thread _receiveAnal;
+    private Thread _receiveView;
     private boolean _receiverRunning = false;
-    private boolean goWork = false;
+    private boolean goAnal = false;
+    private boolean goView = false;
     private Context _context = null;
     private  int _cnt = 0;
     private  float perioD = 2.0f;
     private int S_cnT = (int) floor(perioD * (float)Unicorn.SamplingRateInHz);
-    private float[][] dataA = new float[S_cnT][Unicorn.NumberOfAcquiredChannels];
-    private float[][] dataF = new float[Unicorn.NumberOfAcquiredChannels][S_cnT];
+    private float[][] dataS = new float[S_cnT][Unicorn.NumberOfAcquiredChannels]; // Source Data
+    private float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
+    private float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
     private int cnT  = 0;
+    private int cnW  = 0;
     GenericFunctions genFunc = new GenericFunctions();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,42 +81,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         _receiver.setDaemon(false);
         _receiver.start();
     }
-    private void StartReceiverWork() {
-        _receiverrWork = new Thread(_doReceiveWork);
-        _receiverrWork.setPriority(Thread.MIN_PRIORITY);
-        _receiverrWork.setDaemon(false);
-        _receiverrWork.start();
+    private void StartReceiveAnal() {
+        _receiveAnal = new Thread(_doReceiveAnal);
+        _receiveAnal.setPriority(Thread.MIN_PRIORITY);
+        _receiveAnal.setDaemon(false);
+        _receiveAnal.start();
+    }
+    private void StartReceiveView() {
+        _receiveView = new Thread(_doReceiveView);
+        _receiveView.setPriority(Thread.MIN_PRIORITY);
+        _receiveView.setDaemon(false);
+        _receiveView.start();
     }
     private void StopReceiver() throws Exception {
         _receiverRunning = false;
         _receiver.join(500);
-        _receiverrWork.join(500);
+        _receiveAnal.join(500);
+        _receiveView.join(500);
     }
 
 
     private Runnable _doReceive = new Runnable() {
         @Override
         public void run() {
-            genFunc.SetZeros(dataA);
-            genFunc.SetZeros(dataF);
-            StartReceiverWork();
+            genFunc.SetZeros(dataS);
+            genFunc.SetZeros(dataR);
+            StartReceiveAnal();
+            StartReceiveView();
             while(_receiverRunning) {
                 try {
-                    goWork = false;
+                    goAnal = false;
                     float[] data = _unicorn.GetData(); // 8X[EEG] 3X[ACC] 3X[Gyroscope] 3x[...] 1X[timestep]
                     _cnt++;
-                    dataA[cnT % S_cnT] = data;
+                    dataS[cnT % S_cnT] = data;
                     cnT++;
-                    dataF = genFunc.TransPose(dataA, cnT);
-                    goWork = true;
+                    dataR = genFunc.TransPose(dataS, cnT);
+                    goAnal = true;
                     /*if(0 == 0) {
                         Handler mainHandler = new Handler( _context.getMainLooper());
                         Runnable myRunnable = new Runnable() {
                             @Override
                             public void run(){
                                 String message = _tvState.getText().toString();
-                                dataF = genFunc.TransPose(dataA, cnT);
-                                message = Float.toString(dataF[0][0]);
+                                dataR = genFunc.TransPose(dataS, cnT);
+                                message = Float.toString(dataR[0][0]);
                                 _tvState.setText(message);
                             }
 
@@ -135,13 +147,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
-    private Runnable _doReceiveWork = new Runnable() {
+    private Runnable _doReceiveAnal = new Runnable() {
         @Override
         public void run() {
             while(_receiverRunning) {
-                if(goWork){
+                if(goAnal){
                     try {
-                        // Work (dataF, cnT);
+                        goView = false;
+                        dataV = dataR;
+                        cnW = cnT;
+                        goView = true;
+                        // Anal (dataR, cnT);
                         if(0 == 0) {
                             Handler mainHandler = new Handler( _context.getMainLooper());
                             Runnable myRunnable = new Runnable() {
@@ -160,7 +176,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                             @Override
                             public void run() {
                                 String message = _tvState.getText().toString();
-                                message += String.format("Work failed. %s\n", ex.getMessage());
+                                message += String.format("Anal failed. %s\n", ex.getMessage());
+                                _tvState.setText(message);
+                                Disconnect();
+                            }
+                        };
+                        mainHandler.post(myRunnable);
+                    }
+                }
+            }
+        }
+    };
+    private Runnable _doReceiveView = new Runnable() {
+        @Override
+        public void run() {
+            while(_receiverRunning) {
+                if(goView){
+                    try {
+                        // View (dataV, cnT);
+                        if(0 == 0) {
+                            Handler mainHandler = new Handler( _context.getMainLooper());
+                            Runnable myRunnable = new Runnable() {
+                                @Override
+                                public void run(){
+                                    String message = _tvState.getText().toString();
+                                    message = Integer.toString(cnT);
+                                    _tvState.setText(message);
+                                }
+                            };
+                            mainHandler.post(myRunnable);
+                        }
+                    } catch (Exception ex) {
+                        Handler mainHandler = new Handler( _context.getMainLooper());
+                        Runnable myRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                String message = _tvState.getText().toString();
+                                message += String.format("View failed. %s\n", ex.getMessage());
                                 _tvState.setText(message);
                                 Disconnect();
                             }
