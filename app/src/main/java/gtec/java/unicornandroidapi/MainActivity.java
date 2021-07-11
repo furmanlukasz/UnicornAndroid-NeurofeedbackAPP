@@ -14,10 +14,20 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.jjoe64.graphview.GraphView;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import java.util.List;
 
 import gtec.java.unicorn.Unicorn;
+
 import neuro.tools.unicorn.GenericFunctions;
+import neuro.tools.unicorn.DataAnalysis;
+import neuro.tools.unicorn.DataView;
+
 import static java.lang.Math.floor;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -28,6 +38,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Spinner _spnDevices = null;
     private TextView _tvState = null;
     private Unicorn _unicorn = null;
+    private GraphView _graph = null;
     private Thread _receiver;
     private Thread _receiveAnal;
     private Thread _receiveView;
@@ -44,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int cnT  = 0;
     private int cnW  = 0;
     GenericFunctions genFunc = new GenericFunctions();
+    DataView dataView = new DataView();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             _spnDevices = findViewById(R.id.spnDevices);
             _btnConnect = findViewById(R.id.btnConnect);
             _tvState = findViewById(R.id.textView);
+            _graph = findViewById(R.id.graph);
 
             _btnConnect.setText(_btnConStr);
             _btnConnect.setOnClickListener(this);
@@ -194,7 +207,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(goView){
                     try {
                         // View (dataV, cnT);
-                        if(0 == 0) {
+                        dataView.View(dataV,_graph,0);
+                        if(0 == 1) {
                             Handler mainHandler = new Handler( _context.getMainLooper());
                             Runnable myRunnable = new Runnable() {
                                 @Override
