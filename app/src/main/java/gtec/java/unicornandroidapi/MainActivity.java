@@ -15,6 +15,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,7 +40,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Spinner _spnDevices = null;
     private TextView _tvState = null;
     private Unicorn _unicorn = null;
-    private GraphView _graph = null;
+    private GraphView _graphidx = null;
     private Thread _receiver;
     private Thread _receiveAnal;
     private Thread _receiveView;
@@ -47,28 +49,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private boolean goView = false;
     private Context _context = null;
     private  int _cnt = 0;
-    private  float perioD = 2.0f;
+    private  float perioD = 3.0f;
     private int S_cnT = (int) floor(perioD * (float)Unicorn.SamplingRateInHz);
+    private int C_cnT = Unicorn.NumberOfAcquiredChannels;
     private float[][] dataS = new float[S_cnT][Unicorn.NumberOfAcquiredChannels]; // Source Data
     private float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
     private float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
     private int cnT  = 0;
     private int cnW  = 0;
+    DataPoint[] dataPoints = new DataPoint[S_cnT];
     GenericFunctions genFunc = new GenericFunctions();
     DataView dataView = new DataView();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        try
-        {
-            //get ui elements
+        try{
             _context = this.getApplicationContext();
             _spnDevices = findViewById(R.id.spnDevices);
             _btnConnect = findViewById(R.id.btnConnect);
             _tvState = findViewById(R.id.textView);
-            _graph = findViewById(R.id.graph);
+            _graphidx = findViewById(R.id.graph);
 
             _btnConnect.setText(_btnConStr);
             _btnConnect.setOnClickListener(this);
@@ -120,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             genFunc.SetZeros(dataS);
             genFunc.SetZeros(dataR);
             StartReceiveAnal();
-            StartReceiveView();
+            // StartReceiveView();
             while(_receiverRunning) {
                 try {
                     goAnal = false;
@@ -128,22 +130,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     _cnt++;
                     dataS[cnT % S_cnT] = data;
                     cnT++;
-                    dataR = genFunc.TransPose(dataS, cnT);
+                    dataR = genFunc.TransPose(dataS, cnT, S_cnT, C_cnT);
+                    dataPoints = genFunc.ToPoints(dataR,0, S_cnT);
                     goAnal = true;
-                    /*if(0 == 0) {
+                    if(0 == 0) {
                         Handler mainHandler = new Handler( _context.getMainLooper());
                         Runnable myRunnable = new Runnable() {
                             @Override
                             public void run(){
-                                String message = _tvState.getText().toString();
-                                dataR = genFunc.TransPose(dataS, cnT);
-                                message = Float.toString(dataR[0][0]);
-                                _tvState.setText(message);
+                                _graphidx.removeAllSeries();
+                                LineGraphSeries<DataPoint> series = new LineGraphSeries<DataPoint>(dataPoints);
+                                _graphidx.addSeries(series);
                             }
-
                         };
                         mainHandler.post(myRunnable);
-                    } */
+                    }
                 } catch (Exception ex) {
                     Handler mainHandler = new Handler( _context.getMainLooper());
                     Runnable myRunnable = new Runnable() {
@@ -206,20 +207,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             while(_receiverRunning) {
                 if(goView){
                     try {
-                        // View (dataV, cnT);
-                        dataView.View(dataV,_graph,0);
-                        if(0 == 1) {
-                            Handler mainHandler = new Handler( _context.getMainLooper());
-                            Runnable myRunnable = new Runnable() {
-                                @Override
-                                public void run(){
-                                    String message = _tvState.getText().toString();
-                                    message = Integer.toString(cnT);
-                                    _tvState.setText(message);
-                                }
-                            };
-                            mainHandler.post(myRunnable);
+                        if(goAnal){
+                            // dataView.View(dataPoints, _graphidx);
+                            // goAnal = false;
                         }
+
                     } catch (Exception ex) {
                         Handler mainHandler = new Handler( _context.getMainLooper());
                         Runnable myRunnable = new Runnable() {
