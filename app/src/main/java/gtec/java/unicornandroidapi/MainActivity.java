@@ -1,8 +1,12 @@
 package gtec.java.unicornandroidapi;
 
 
-
 import androidx.appcompat.app.AppCompatActivity;
+
+
+import android.app.ActivityManager;
+import android.content.pm.ConfigurationInfo;
+import android.opengl.GLSurfaceView;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -31,6 +35,7 @@ import neuro.tools.unicorn.DataAnalysis;
 import neuro.tools.unicorn.DataView;
 
 import static java.lang.Math.floor;
+
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -61,10 +66,46 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     GenericFunctions genFunc = new GenericFunctions();
     DataView dataView = new DataView();
 
+    private GLSurfaceView mGLSurfaceView;
+    float time;
+
+    void GL_go(){
+        mGLSurfaceView = new GLSurfaceView(this);
+        final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
+        final boolean supportsEs2 = configurationInfo.reqGlEsVersion >= 0x20000;
+        if (supportsEs2)
+        {
+            // Request an OpenGL ES 2.0 compatible context.
+            mGLSurfaceView.setEGLContextClientVersion(2);
+
+            // Set the renderer to our demo renderer, defined below.
+            mGLSurfaceView.setRenderer(new Renderer());
+        }
+        else
+        {
+            // This is where you could create an OpenGL ES 1.x compatible
+            // renderer if you wanted to support both ES 1 and ES 2.
+            return;
+        }
+
+        setContentView(mGLSurfaceView);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+//        batch = new SpriteBatch();
+//        img = new Texture("badlogic.jpg");
+//        jungleTexture = new Texture("jungle.png");
+//        peachTexture = new Texture("peach.png");
+//        shader = new ShaderProgram(batch.getShader().getVertexShaderSource(), Gdx.files.internal("underwater.frag").readString());
+//        if (!shader.isCompiled()){
+//            System.out.println(shader.getLog());
+//        }
+
         try{
             _context = this.getApplicationContext();
             _spnDevices = findViewById(R.id.spnDevices);
@@ -331,6 +372,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(_btnConnect.getText().equals(_btnConStr))
                 {
                     Connect();
+                    GL_go();
                 }
                 else
                 {
