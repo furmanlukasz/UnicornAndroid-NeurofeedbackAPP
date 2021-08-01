@@ -6,14 +6,21 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.ActivityManager;
 import android.content.pm.ConfigurationInfo;
-import android.opengl.GLSurfaceView;
+
 
 import android.content.Context;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.AttributeSet;
+import android.util.TypedValue;
+import android.view.LayoutInflater;
 import android.view.View;
+
+import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,18 +29,13 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import java.util.List;
 
 import gtec.java.unicorn.Unicorn;
 
 import neuro.tools.unicorn.GenericFunctions;
-import neuro.tools.unicorn.DataAnalysis;
-import neuro.tools.unicorn.DataView;
 
+import static java.lang.Math.addExact;
 import static java.lang.Math.floor;
 
 
@@ -64,48 +66,50 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int cnW  = 0;
     DataPoint[] dataPoints = new DataPoint[S_cnT];
     GenericFunctions genFunc = new GenericFunctions();
-    DataView dataView = new DataView();
 
-    private GLSurfaceView mGLSurfaceView;
+    public GLSurfaceView glSurfaceView;
+
     float time;
 
-    void GL_go(){
-        mGLSurfaceView = new GLSurfaceView(this);
+    void GL_go() {
+        setContentView(R.layout.activity_main);
+        //glSurfaceView = new GLSurfaceView(this);
+        glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_layout);
+                //new GLSurfaceView(this);
         final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
-        final boolean supportsEs2 = configurationInfo.reqGlEsVersion >= 0x20000;
-        if (supportsEs2)
-        {
+        float mmInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 30, getResources().getDisplayMetrics());
+        ViewGroup.LayoutParams layoutParams= new ViewGroup.LayoutParams((int) mmInPx,(int) mmInPx);
+
+        if (configurationInfo.reqGlEsVersion >= 0x20000) {
             // Request an OpenGL ES 2.0 compatible context.
-            mGLSurfaceView.setEGLContextClientVersion(2);
+            glSurfaceView.setEGLContextClientVersion(2);
 
             // Set the renderer to our demo renderer, defined below.
-            mGLSurfaceView.setRenderer(new Renderer());
-        }
-        else
-        {
+            //layoutParams.width= 20;
+            //layoutParams.height= (int) mmInPx;
+            //mGLSurfaceView.setLayoutParams(layoutParams);
+            glSurfaceView.setRenderer(new Renderer_frag());
+
+            //setContentView(glSurfaceView, layoutParams);
+        } else {
             // This is where you could create an OpenGL ES 1.x compatible
             // renderer if you wanted to support both ES 1 and ES 2.
-            return;
         }
-
-        setContentView(mGLSurfaceView);
     }
+
+
+    Gl_Handler gl_activity;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
-
-//        batch = new SpriteBatch();
-//        img = new Texture("badlogic.jpg");
-//        jungleTexture = new Texture("jungle.png");
-//        peachTexture = new Texture("peach.png");
-//        shader = new ShaderProgram(batch.getShader().getVertexShaderSource(), Gdx.files.internal("underwater.frag").readString());
-//        if (!shader.isCompiled()){
-//            System.out.println(shader.getLog());
-//        }
-
+        GL_go();
+        //gl_activity = (Gl_Handler)findViewById(R.id.gl_layout);
+        //glSurfaceView = new GLSurfaceView(this,findViewById(R.id.gl_layout));
+        //setContentView(glSurfaceView);
         try{
             _context = this.getApplicationContext();
             _spnDevices = findViewById(R.id.spnDevices);
@@ -372,7 +376,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(_btnConnect.getText().equals(_btnConStr))
                 {
                     Connect();
-                    GL_go();
+                    //GL_go();
                 }
                 else
                 {

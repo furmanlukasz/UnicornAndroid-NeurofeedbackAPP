@@ -32,6 +32,13 @@
         <com.jjoe64.graphview.GraphView
             android:id="@+id/graph"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="162dp" />
+
+        <android.opengl.GLSurfaceView
+            android:id="@+id/gl_layout"
+            android:layout_width="match_parent"
+            android:layout_height="297dp" />
+
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

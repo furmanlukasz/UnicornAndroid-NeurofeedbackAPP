@@ -1,5 +1,7 @@
 package gtec.java.unicornandroidapi;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -7,17 +9,23 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.content.res.AssetManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.Build;
 import android.os.SystemClock;
+
+
 
 /**
  * This class implements our custom renderer. Note that the GL10 parameter passed in is unused for OpenGL ES 2.0
  * renderers -- the static class GLES20 is used instead.
  */
-public class Renderer implements GLSurfaceView.Renderer
+public class Renderer_frag implements GLSurfaceView.Renderer
 {
+
+    private AssetManager assetManager;
     /**
      * Store the model matrix. This matrix is used to move models from object space (where each model can be thought
      * of being located at the center of the universe) to world space.
@@ -71,7 +79,7 @@ public class Renderer implements GLSurfaceView.Renderer
     /**
      * Initialize the model data.
      */
-    public Renderer()
+    public Renderer_frag()
     {
         // Define points for equilateral triangles.
 
@@ -153,31 +161,16 @@ public class Renderer implements GLSurfaceView.Renderer
         // view matrix. In OpenGL 2, we can keep track of these matrices separately if we choose.
         Matrix.setLookAtM(mViewMatrix, 0, eyeX, eyeY, eyeZ, lookX, lookY, lookZ, upX, upY, upZ);
 
-        final String vertexShader =
-                "uniform mat4 u_MVPMatrix;      \n"		// A constant representing the combined model/view/projection matrix.
-
-                        + "attribute vec4 a_Position;     \n"		// Per-vertex position information we will pass in.
-                        + "attribute vec4 a_Color;        \n"		// Per-vertex color information we will pass in.
-
-                        + "varying vec4 v_Color;          \n"		// This will be passed into the fragment shader.
-
-                        + "void main()                    \n"		// The entry point for our vertex shader.
-                        + "{                              \n"
-                        + "   v_Color = a_Color;          \n"		// Pass the color through to the fragment shader.
-                        // It will be interpolated across the triangle.
-                        + "   gl_Position = u_MVPMatrix   \n" 	// gl_Position is a special variable used to store the final position.
-                        + "               * a_Position;   \n"     // Multiply the vertex by the matrix to get the final point in
-                        + "}                              \n";    // normalized screen coordinates.
-
-        final String fragmentShader =
-                "precision mediump float;       \n"		// Set the default precision to medium. We don't need as high of a
-                        // precision in the fragment shader.
-                        + "varying vec4 v_Color;          \n"		// This is the color from the vertex shader interpolated across the
-                        // triangle per fragment.
-                        + "void main()                    \n"		// The entry point for our fragment shader.
-                        + "{                              \n"
-                        + "   gl_FragColor = v_Color;     \n"		// Pass the color directly through the pipeline.
-                        + "}                              \n";
+        String vertexS = " ";
+        String fragmentS = " ";
+        try {
+            vertexS = Util.readFile(Util.getResourceAsStream("assets/vert.glsl"));
+            fragmentS = Util.readFile(Util.getResourceAsStream("assets/frag.glsl"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        final String vertexShader = vertexS;
+        final String fragmentShader = fragmentS;
 
         // Load in the vertex shader.
         int vertexShaderHandle = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
@@ -278,6 +271,8 @@ public class Renderer implements GLSurfaceView.Renderer
         // Tell OpenGL to use this program when rendering.
         GLES20.glUseProgram(programHandle);
     }
+
+
 
     @Override
     public void onSurfaceChanged(GL10 glUnused, int width, int height)
