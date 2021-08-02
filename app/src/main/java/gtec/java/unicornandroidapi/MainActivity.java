@@ -12,7 +12,10 @@ import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
+
+import android.os.Looper;
 import android.util.AttributeSet;
+
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -41,6 +44,8 @@ import static java.lang.Math.floor;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
+
+
     private String _btnConStr = "Connect";
     private String _btnDisconStr = "Disconnect";
     private Button _btnConnect = null;
@@ -56,14 +61,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private boolean goView = false;
     private Context _context = null;
     private  int _cnt = 0;
-    private  float perioD = 3.0f;
-    private int S_cnT = (int) floor(perioD * (float)Unicorn.SamplingRateInHz);
+    private static float perioD = 3.0f;
+    public static int S_cnT = (int) floor(perioD * (float)Unicorn.SamplingRateInHz);
     private int C_cnT = Unicorn.NumberOfAcquiredChannels;
     private float[][] dataS = new float[S_cnT][Unicorn.NumberOfAcquiredChannels]; // Source Data
-    private float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
-    private float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
+    public float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
+    public static float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
     private int cnT  = 0;
     private int cnW  = 0;
+    public static float totest  = (float) 0.0;
     DataPoint[] dataPoints = new DataPoint[S_cnT];
     GenericFunctions genFunc = new GenericFunctions();
 
@@ -79,7 +85,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
         float mmInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 30, getResources().getDisplayMetrics());
-        ViewGroup.LayoutParams layoutParams= new ViewGroup.LayoutParams((int) mmInPx,(int) mmInPx);
+        ViewGroup.LayoutParams layoutParams= new ViewGroup.LayoutParams((int) 300,(int) 300);
 
         if (configurationInfo.reqGlEsVersion >= 0x20000) {
             // Request an OpenGL ES 2.0 compatible context.
@@ -99,7 +105,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    Gl_Handler gl_activity;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,9 +113,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         setContentView(R.layout.activity_main);
         GL_go();
-        //gl_activity = (Gl_Handler)findViewById(R.id.gl_layout);
-        //glSurfaceView = new GLSurfaceView(this,findViewById(R.id.gl_layout));
-        //setContentView(glSurfaceView);
+
         try{
             _context = this.getApplicationContext();
             _spnDevices = findViewById(R.id.spnDevices);
@@ -168,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             genFunc.SetZeros(dataR);
             StartReceiveAnal();
             // StartReceiveView();
+            Looper mLooper = Looper.myLooper();
             while(_receiverRunning) {
                 try {
                     goAnal = false;
@@ -175,7 +180,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     _cnt++;
                     dataS[cnT % S_cnT] = data;
                     cnT++;
+                    //Log.i("log", "run");
+
+
                     dataR = genFunc.TransPose(dataS, cnT, S_cnT, C_cnT);
+                    //Looper.loop();
                     dataPoints = genFunc.ToPoints(dataR,0, S_cnT);
                     goAnal = true;
                     if(0 == 0) {
@@ -224,6 +233,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 public void run(){
                                     String message = _tvState.getText().toString();
                                     message = Integer.toString(cnT);
+                                    totest = (float) cnT/2000;
                                     _tvState.setText(message);
                                 }
                             };
@@ -376,11 +386,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(_btnConnect.getText().equals(_btnConStr))
                 {
                     Connect();
+                    totest = (float) 1.0;
+
                     //GL_go();
                 }
                 else
                 {
                     Disconnect();
+                    //totest = (float) 0.0;
+
                 }
                 break;
             }

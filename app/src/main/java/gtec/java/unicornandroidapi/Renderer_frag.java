@@ -14,10 +14,15 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 
+import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
 
-
+import gtec.java.unicornandroidapi.MainActivity;
 /**
  * This class implements our custom renderer. Note that the GL10 parameter passed in is unused for OpenGL ES 2.0
  * renderers -- the static class GLES20 is used instead.
@@ -46,36 +51,23 @@ public class Renderer_frag implements GLSurfaceView.Renderer
 
     /** Store our model data in a float buffer. */
     private final FloatBuffer mTriangle1Vertices;
-    private final FloatBuffer mTriangle2Vertices;
-    private final FloatBuffer mTriangle3Vertices;
+//    private final FloatBuffer mTriangle2Vertices;
+//    private final FloatBuffer mTriangle3Vertices;
 
-    /** This will be used to pass in the transformation matrix. */
     private int mMVPMatrixHandle;
-
-    /** This will be used to pass in model position information. */
     private int mPositionHandle;
-
-    /** This will be used to pass in model color information. */
     private int mColorHandle;
-
-    /** How many bytes per float. */
+    private int valuePositionHandle;
+    private int mDataHandle;
     private final int mBytesPerFloat = 4;
-
-    /** How many elements per vertex. */
     private final int mStrideBytes = 7 * mBytesPerFloat;
-
-    /** Offset of the position data. */
     private final int mPositionOffset = 0;
-
-    /** Size of the position data in elements. */
     private final int mPositionDataSize = 3;
-
-    /** Offset of the color data. */
     private final int mColorOffset = 3;
-
-    /** Size of the color data in elements. */
     private final int mColorDataSize = 4;
-
+    public MainActivity unicornData = new MainActivity();
+    public float val;
+    public float[][] val_data;
     /**
      * Initialize the model data.
      */
@@ -87,52 +79,55 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         final float[] triangle1VerticesData = {
                 // X, Y, Z,
                 // R, G, B, A
-                -0.5f, -0.25f, 0.0f,
+                -1.0f, 1.0f, 0.0f,
                 1.0f, 0.0f, 0.0f, 1.0f,
 
-                0.5f, -0.25f, 0.0f,
+                -1.0f, -1.0f, 0.0f,
                 0.0f, 0.0f, 1.0f, 1.0f,
 
-                0.0f, 0.559016994f, 0.0f,
+                1.0f, -1.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+
+                1.0f, 1.0f, 0.0f,
                 0.0f, 1.0f, 0.0f, 1.0f};
 
         // This triangle is yellow, cyan, and magenta.
-        final float[] triangle2VerticesData = {
-                // X, Y, Z,
-                // R, G, B, A
-                -0.5f, -0.25f, 0.0f,
-                1.0f, 1.0f, 0.0f, 1.0f,
-
-                0.5f, -0.25f, 0.0f,
-                0.0f, 1.0f, 1.0f, 1.0f,
-
-                0.0f, 0.559016994f, 0.0f,
-                1.0f, 0.0f, 1.0f, 1.0f};
+//        final float[] triangle2VerticesData = {
+//                // X, Y, Z,
+//                // R, G, B, A
+//                -0.5f, -0.25f, 0.0f,
+//                1.0f, 1.0f, 0.0f, 1.0f,
+//
+//                0.5f, -0.25f, 0.0f,
+//                0.0f, 1.0f, 1.0f, 1.0f,
+//
+//                0.0f, 0.559016994f, 0.0f,
+//                1.0f, 0.0f, 1.0f, 1.0f};
 
         // This triangle is white, gray, and black.
-        final float[] triangle3VerticesData = {
-                // X, Y, Z,
-                // R, G, B, A
-                -0.5f, -0.25f, 0.0f,
-                1.0f, 1.0f, 1.0f, 1.0f,
-
-                0.5f, -0.25f, 0.0f,
-                0.5f, 0.5f, 0.5f, 1.0f,
-
-                0.0f, 0.559016994f, 0.0f,
-                0.0f, 0.0f, 0.0f, 1.0f};
+//        final float[] triangle3VerticesData = {
+//                // X, Y, Z,
+//                // R, G, B, A
+//                -0.5f, -0.25f, 0.0f,
+//                1.0f, 1.0f, 1.0f, 1.0f,
+//
+//                0.5f, -0.25f, 0.0f,
+//                0.5f, 0.5f, 0.5f, 1.0f,
+//
+//                0.0f, 0.559016994f, 0.0f,
+//                0.0f, 0.0f, 0.0f, 1.0f};
 
         // Initialize the buffers.
         mTriangle1Vertices = ByteBuffer.allocateDirect(triangle1VerticesData.length * mBytesPerFloat)
                 .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        mTriangle2Vertices = ByteBuffer.allocateDirect(triangle2VerticesData.length * mBytesPerFloat)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        mTriangle3Vertices = ByteBuffer.allocateDirect(triangle3VerticesData.length * mBytesPerFloat)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+//        mTriangle2Vertices = ByteBuffer.allocateDirect(triangle2VerticesData.length * mBytesPerFloat)
+//                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+//        mTriangle3Vertices = ByteBuffer.allocateDirect(triangle3VerticesData.length * mBytesPerFloat)
+//                .order(ByteOrder.nativeOrder()).asFloatBuffer();
 
         mTriangle1Vertices.put(triangle1VerticesData).position(0);
-        mTriangle2Vertices.put(triangle2VerticesData).position(0);
-        mTriangle3Vertices.put(triangle3VerticesData).position(0);
+//        mTriangle2Vertices.put(triangle2VerticesData).position(0);
+//        mTriangle3Vertices.put(triangle3VerticesData).position(0);
     }
 
     @Override
@@ -144,7 +139,7 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         // Position the eye behind the origin.
         final float eyeX = 0.0f;
         final float eyeY = 0.0f;
-        final float eyeZ = 1.5f;
+        final float eyeZ = 1.01f;
 
         // We are looking toward the distance
         final float lookX = 0.0f;
@@ -267,6 +262,8 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         mMVPMatrixHandle = GLES20.glGetUniformLocation(programHandle, "u_MVPMatrix");
         mPositionHandle = GLES20.glGetAttribLocation(programHandle, "a_Position");
         mColorHandle = GLES20.glGetAttribLocation(programHandle, "a_Color");
+        mDataHandle = GLES20.glGetUniformLocation(programHandle, "u_Data");
+        valuePositionHandle = GLES20.glGetUniformLocation(programHandle, "myValue");
 
         // Tell OpenGL to use this program when rendering.
         GLES20.glUseProgram(programHandle);
@@ -300,26 +297,30 @@ public class Renderer_frag implements GLSurfaceView.Renderer
 
         // Do a complete rotation every 10 seconds.
         long time = SystemClock.uptimeMillis() % 10000L;
+        val = unicornData.dataV[5][1]-unicornData.dataV[5][0];
+        val_data = unicornData.dataV;
+        //Log.d("myTag", String.valueOf(val_data[0]));
+        //Log.d("myTime", String.valueOf(time));
         float angleInDegrees = (360.0f / 10000.0f) * ((int) time);
 
         // Draw the triangle facing straight on.
         Matrix.setIdentityM(mModelMatrix, 0);
-        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
+        //Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
         drawTriangle(mTriangle1Vertices);
 
         // Draw one translated a bit down and rotated to be flat on the ground.
-        Matrix.setIdentityM(mModelMatrix, 0);
-        Matrix.translateM(mModelMatrix, 0, 0.0f, -1.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, 90.0f, 1.0f, 0.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
-        drawTriangle(mTriangle2Vertices);
+//        Matrix.setIdentityM(mModelMatrix, 0);
+//        Matrix.translateM(mModelMatrix, 0, 0.0f, -1.0f, 0.0f);
+//        Matrix.rotateM(mModelMatrix, 0, 90.0f, 1.0f, 0.0f, 0.0f);
+//        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
+//        drawTriangle(mTriangle2Vertices);
 
         // Draw one translated a bit to the right and rotated to be facing to the left.
-        Matrix.setIdentityM(mModelMatrix, 0);
-        Matrix.translateM(mModelMatrix, 0, 1.0f, 0.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, 90.0f, 0.0f, 1.0f, 0.0f);
-        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
-        drawTriangle(mTriangle3Vertices);
+//        Matrix.setIdentityM(mModelMatrix, 0);
+//        Matrix.translateM(mModelMatrix, 0, 1.0f, 0.0f, 0.0f);
+//        Matrix.rotateM(mModelMatrix, 0, 90.0f, 0.0f, 1.0f, 0.0f);
+//        Matrix.rotateM(mModelMatrix, 0, angleInDegrees, 0.0f, 0.0f, 1.0f);
+//        drawTriangle(mTriangle3Vertices);
     }
 
     /**
@@ -329,6 +330,7 @@ public class Renderer_frag implements GLSurfaceView.Renderer
      */
     private void drawTriangle(final FloatBuffer aTriangleBuffer)
     {
+
         // Pass in the position information
         aTriangleBuffer.position(mPositionOffset);
         GLES20.glVertexAttribPointer(mPositionHandle, mPositionDataSize, GLES20.GL_FLOAT, false,
@@ -340,6 +342,12 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         aTriangleBuffer.position(mColorOffset);
         GLES20.glVertexAttribPointer(mColorHandle, mColorDataSize, GLES20.GL_FLOAT, false,
                 mStrideBytes, aTriangleBuffer);
+        //GLES20.glTexImage2D();
+        GLES20.glUniform1fv(mDataHandle, unicornData.dataV[0].length, FloatBuffer.wrap(unicornData.dataV[0]));
+
+//        GLES20.glUniform1fv(mDataHandle,0, FloatBuffer.wrap(unicornData.dataR[0]));
+        GLES20.glUniform1f(valuePositionHandle, val);
+
 
         GLES20.glEnableVertexAttribArray(mColorHandle);
 
@@ -352,6 +360,6 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mMVPMatrix, 0);
 
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN, 0, 4);
     }
 }
