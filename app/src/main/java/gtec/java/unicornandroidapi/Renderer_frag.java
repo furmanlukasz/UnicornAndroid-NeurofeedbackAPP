@@ -2,9 +2,13 @@ package gtec.java.unicornandroidapi;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.Arrays;
+import java.util.stream.IntStream;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -19,10 +23,15 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
+
+import androidx.annotation.RequiresApi;
+
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
 import gtec.java.unicornandroidapi.MainActivity;
+import neuro.tools.unicorn.GenericFunctions;
+
 /**
  * This class implements our custom renderer. Note that the GL10 parameter passed in is unused for OpenGL ES 2.0
  * renderers -- the static class GLES20 is used instead.
@@ -30,6 +39,7 @@ import gtec.java.unicornandroidapi.MainActivity;
 public class Renderer_frag implements GLSurfaceView.Renderer
 {
 
+    private static final int NO_TEXTURE = 0;
     private AssetManager assetManager;
     /**
      * Store the model matrix. This matrix is used to move models from object space (where each model can be thought
@@ -58,7 +68,16 @@ public class Renderer_frag implements GLSurfaceView.Renderer
     private int mPositionHandle;
     private int mColorHandle;
     private int valuePositionHandle;
-    private int mDataHandle;
+
+    private int mEEGDataHandle1;
+    private int mEEGDataHandle2;
+    private int mEEGDataHandle3;
+    private int mEEGDataHandle4;
+    private int mEEGDataHandle5;
+    private int mEEGDataHandle6;
+    private int mEEGDataHandle7;
+    private int mEEGDataHandle8;
+    private int mEEGDataHandlerALL;
     private final int mBytesPerFloat = 4;
     private final int mStrideBytes = 7 * mBytesPerFloat;
     private final int mPositionOffset = 0;
@@ -66,9 +85,15 @@ public class Renderer_frag implements GLSurfaceView.Renderer
     private final int mColorOffset = 3;
     private final int mColorDataSize = 4;
     public MainActivity unicornData = new MainActivity();
+    public GenericFunctions genFunc = new GenericFunctions();
     public float val;
-    public float[][] val_data;
+    public float[][] eeg_data;
     public float[] val_data1;
+    private int vsTextureCoord;
+    private int fsTexture;
+
+
+
     /**
      * Initialize the model data.
      */
@@ -137,6 +162,7 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         // Set the background clear color to gray.
         GLES20.glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
 
+        //GLES20.glBindTexture(GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, toneCurveTexture[0]));
         // Position the eye behind the origin.
         final float eyeX = 0.0f;
         final float eyeY = 0.0f;
@@ -263,11 +289,25 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         mMVPMatrixHandle = GLES20.glGetUniformLocation(programHandle, "u_MVPMatrix");
         mPositionHandle = GLES20.glGetAttribLocation(programHandle, "a_Position");
         mColorHandle = GLES20.glGetAttribLocation(programHandle, "a_Color");
-        mDataHandle = GLES20.glGetUniformLocation(programHandle, "u_Data");
+        mEEGDataHandle1 = GLES20.glGetUniformLocation(programHandle, "u_EEG1");
+        mEEGDataHandle2 = GLES20.glGetUniformLocation(programHandle, "u_EEG2");
+        mEEGDataHandle3 = GLES20.glGetUniformLocation(programHandle, "u_EEG3");
+        mEEGDataHandle4 = GLES20.glGetUniformLocation(programHandle, "u_EEG4");
+        mEEGDataHandle5 = GLES20.glGetUniformLocation(programHandle, "u_EEG5");
+        mEEGDataHandle6 = GLES20.glGetUniformLocation(programHandle, "u_EEG6");
+        mEEGDataHandle7 = GLES20.glGetUniformLocation(programHandle, "u_EEG7");
+        mEEGDataHandle8 = GLES20.glGetUniformLocation(programHandle, "u_EEG8");
+        mEEGDataHandlerALL = GLES20.glGetUniformLocation(programHandle, "u_Map");
+        //vsTextureCoord = GLES20.glGetAttribLocation(programHandle, "TexCoordIn");
+        //get handle to shape's texture reference
+        fsTexture = GLES20.glGetUniformLocation(programHandle, "uTexture");
+
+
         valuePositionHandle = GLES20.glGetUniformLocation(programHandle, "myValue");
 
         // Tell OpenGL to use this program when rendering.
         GLES20.glUseProgram(programHandle);
+
     }
 
 
@@ -291,16 +331,30 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         Matrix.frustumM(mProjectionMatrix, 0, left, right, bottom, top, near, far);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void onDrawFrame(GL10 glUnused)
     {
+
         GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
 
+        int[] tex_output = new int[1];
+        GLES20.glGenTextures(1, tex_output,0);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex_output[0]);
+        GLES20.glGenerateMipmap(GLES20.GL_TEXTURE_2D);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glUniform1i(fsTexture, 0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex_output[0]);
         // Do a complete rotation every 10 seconds.
         long time = SystemClock.uptimeMillis() % 10000L;
         //val = unicornData.dataV[5][1]-unicornData.dataV[5][0];
-        val_data = unicornData.dataV;
-        val_data1 = unicornData.dataShader;
+        eeg_data = unicornData.dataV;
         //Log.d("myTag", String.valueOf(val_data[0]));
         //Log.d("myTime", String.valueOf(time));
         float angleInDegrees = (360.0f / 10000.0f) * ((int) time);
@@ -330,6 +384,7 @@ public class Renderer_frag implements GLSurfaceView.Renderer
      *
      * @param aTriangleBuffer The buffer containing the vertex data.
      */
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void drawTriangle(final FloatBuffer aTriangleBuffer)
     {
 
@@ -346,9 +401,28 @@ public class Renderer_frag implements GLSurfaceView.Renderer
                 mStrideBytes, aTriangleBuffer);
         //GLES20.glTexImage2D();
         //GLES20.glUniform1fv(mDataHandle, unicornData.dataV[0].length, FloatBuffer.wrap(unicornData.dataV[0]));
-        GLES20.glUniform1fv(mDataHandle, unicornData.dataShader.length, FloatBuffer.wrap(unicornData.dataShader));
+        GLES20.glUniform1fv(mEEGDataHandle1, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[0])));
+        GLES20.glUniform1fv(mEEGDataHandle2, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[1])));
+        GLES20.glUniform1fv(mEEGDataHandle3, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[2])));
+        GLES20.glUniform1fv(mEEGDataHandle4, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[3])));
+        GLES20.glUniform1fv(mEEGDataHandle5, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[4])));
+        GLES20.glUniform1fv(mEEGDataHandle6, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[5])));
+        GLES20.glUniform1fv(mEEGDataHandle7, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[6])));
+        GLES20.glUniform1fv(mEEGDataHandle8, eeg_data[0].length, FloatBuffer.wrap(genFunc.NormArr(eeg_data[7])));
 
-//        GLES20.glUniform1fv(mDataHandle,0, FloatBuffer.wrap(unicornData.dataR[0]));
+//        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+//        FloatBuffer texBuffer = ByteBuffer.allocateDirect(eeg_data.length * Float.SIZE).order(ByteOrder.nativeOrder()).asFloatBuffer();
+//        texBuffer.put(eeg_data[0]);
+
+
+        //Buffer data = ByteBuffer.wrap(ByteBuffer.allocateDirect(eeg_data.length).array());
+
+        //GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 750 /*width*/, 17 /*height*/, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, data);
+        //float[][] arrays = new float[] { genFunc.NormArr(eeg_data[0]), genFunc.NormArr(eeg_data[1]), genFunc.NormArr(eeg_data[2]), genFunc.NormArr(eeg_data[3]) };
+        //GLES20.glUniform4fv(mEEGDataHandle8, eeg_data[0].length, arrays);
+
+
+//      GLES20.glUniform1fv(mDataHandle,0, FloatBuffer.wrap(unicornData.dataR[0]));
         GLES20.glUniform1f(valuePositionHandle, val);
 
 

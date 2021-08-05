@@ -58,19 +58,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private float[][] dataS = new float[S_cnT][Unicorn.NumberOfAcquiredChannels]; // Source Data
     public float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
     public static float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
-    public static float[] dataShader = new float[S_cnT]; // View Data for single channel
+    public static float[][] dataShader = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data for single channel
     private int cnT  = 0;
     private int cnW  = 0;
     public static float totest  = (float) 0.0;
     DataPoint[] dataPoints = new DataPoint[S_cnT];
     GenericFunctions genFunc = new GenericFunctions();
     BandPassFilter bandpass = new BandPassFilter(0.0,0.45,0.1,0.01);
-    public float[] h = new float[bandpass.getCoefficients1().length];
+
     public GLSurfaceView glSurfaceView;
 
 
     void GL_go() {
         setContentView(R.layout.activity_main);
+        //glSurfaceView.setEGLContextClientVersion(2);
         glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_layout);
         final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
@@ -157,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             genFunc.SetZeros(dataR);
             StartReceiveAnal();
             // StartReceiveView();
-            Looper mLooper = Looper.myLooper();
+
             while(_receiverRunning) {
                 try {
                     goAnal = false;
@@ -165,12 +166,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     _cnt++;
                     dataS[cnT % S_cnT] = data;
                     cnT++;
-                    //Log.i("log", "run");
-
 
                     dataR = genFunc.TransPose(dataS, cnT, S_cnT, C_cnT);
 
-                    //Looper.loop();
                     dataPoints = genFunc.ToPoints(dataR,0, S_cnT);
                     goAnal = true;
                     if(0 == 0) {
@@ -201,6 +199,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     };
+    // GLSL plot
     private Runnable _doReceiveAnal = new Runnable() {
         @Override
         public void run() {
@@ -211,10 +210,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         dataV = dataR;
                         Log.d("channel length", String.valueOf(dataV[0].length));
 
-                        bandpass.apply(dataR[10],dataShader);
-
-                        Log.d("filtered signal", String.valueOf(dataShader[0]));
-                        Log.d("filtered signal", String.valueOf(dataR[10][0]));
+                        bandpass.apply(dataR,dataShader);
+                        //float[] tes = genFunc.NormArr(dataShader[0]);
+                        //Log.d("filtered signal", String.valueOf(tes[0]));
+                        //Log.d("filtered signal", String.valueOf(dataR[0][0]));
                         cnW = cnT;
                         goView = true;
                         // Anal (dataR, cnT);
