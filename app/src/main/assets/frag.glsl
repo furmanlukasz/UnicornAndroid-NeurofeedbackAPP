@@ -16,7 +16,7 @@ void main(){
     st.x *= res.x/1000.0;
     vec2 ipos = floor(st * 750.0);
 
-    float array = u_Data[int(ipos.x)]*0.00001;
+    float array = u_Data[int(ipos.x)];
     float pct = plot(st,abs(array));
 
     vec3 color = pct*vec3(0.0,1.0,0.0);

@@ -68,6 +68,7 @@ public class Renderer_frag implements GLSurfaceView.Renderer
     public MainActivity unicornData = new MainActivity();
     public float val;
     public float[][] val_data;
+    public float[] val_data1;
     /**
      * Initialize the model data.
      */
@@ -297,8 +298,9 @@ public class Renderer_frag implements GLSurfaceView.Renderer
 
         // Do a complete rotation every 10 seconds.
         long time = SystemClock.uptimeMillis() % 10000L;
-        val = unicornData.dataV[5][1]-unicornData.dataV[5][0];
+        //val = unicornData.dataV[5][1]-unicornData.dataV[5][0];
         val_data = unicornData.dataV;
+        val_data1 = unicornData.dataShader;
         //Log.d("myTag", String.valueOf(val_data[0]));
         //Log.d("myTime", String.valueOf(time));
         float angleInDegrees = (360.0f / 10000.0f) * ((int) time);
@@ -343,7 +345,8 @@ public class Renderer_frag implements GLSurfaceView.Renderer
         GLES20.glVertexAttribPointer(mColorHandle, mColorDataSize, GLES20.GL_FLOAT, false,
                 mStrideBytes, aTriangleBuffer);
         //GLES20.glTexImage2D();
-        GLES20.glUniform1fv(mDataHandle, unicornData.dataV[0].length, FloatBuffer.wrap(unicornData.dataV[0]));
+        //GLES20.glUniform1fv(mDataHandle, unicornData.dataV[0].length, FloatBuffer.wrap(unicornData.dataV[0]));
+        GLES20.glUniform1fv(mDataHandle, unicornData.dataShader.length, FloatBuffer.wrap(unicornData.dataShader));
 
 //        GLES20.glUniform1fv(mDataHandle,0, FloatBuffer.wrap(unicornData.dataR[0]));
         GLES20.glUniform1f(valuePositionHandle, val);

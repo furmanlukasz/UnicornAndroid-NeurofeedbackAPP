@@ -1,3 +1,4 @@
+include ':edu-mines-jtk-1.1.0'
 include ':unicorn'
 include ':app'
 rootProject.name = "UnicornAndroidAPI"

@@ -1,25 +1,18 @@
 package gtec.java.unicornandroidapi;
 
-
 import androidx.appcompat.app.AppCompatActivity;
-
-
 import android.app.ActivityManager;
 import android.content.pm.ConfigurationInfo;
-
-
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
-
 import android.os.Looper;
 import android.util.AttributeSet;
-
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
-
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -27,24 +20,22 @@ import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
-
 import java.util.List;
-
 import gtec.java.unicorn.Unicorn;
-
 import neuro.tools.unicorn.GenericFunctions;
-
 import static java.lang.Math.addExact;
 import static java.lang.Math.floor;
+import edu.mines.jtk.dsp.BandPassFilter;
+import edu.mines.jtk.ogl.*;
+import edu.mines.jtk.util.*;
+import static edu.mines.jtk.ogl.Gl.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
-
-
 
     private String _btnConStr = "Connect";
     private String _btnDisconStr = "Disconnect";
@@ -67,21 +58,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private float[][] dataS = new float[S_cnT][Unicorn.NumberOfAcquiredChannels]; // Source Data
     public float[][] dataR = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // RAW Data
     public static float[][] dataV = new float[Unicorn.NumberOfAcquiredChannels][S_cnT]; // View Data
+    public static float[] dataShader = new float[S_cnT]; // View Data for single channel
     private int cnT  = 0;
     private int cnW  = 0;
     public static float totest  = (float) 0.0;
     DataPoint[] dataPoints = new DataPoint[S_cnT];
     GenericFunctions genFunc = new GenericFunctions();
-
+    BandPassFilter bandpass = new BandPassFilter(0.0,0.45,0.1,0.01);
+    public float[] h = new float[bandpass.getCoefficients1().length];
     public GLSurfaceView glSurfaceView;
 
-    float time;
 
     void GL_go() {
         setContentView(R.layout.activity_main);
-        //glSurfaceView = new GLSurfaceView(this);
         glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_layout);
-                //new GLSurfaceView(this);
         final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
         float mmInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 30, getResources().getDisplayMetrics());
@@ -90,13 +80,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (configurationInfo.reqGlEsVersion >= 0x20000) {
             // Request an OpenGL ES 2.0 compatible context.
             glSurfaceView.setEGLContextClientVersion(2);
-
-            // Set the renderer to our demo renderer, defined below.
-            //layoutParams.width= 20;
-            //layoutParams.height= (int) mmInPx;
-            //mGLSurfaceView.setLayoutParams(layoutParams);
             glSurfaceView.setRenderer(new Renderer_frag());
-
             //setContentView(glSurfaceView, layoutParams);
         } else {
             // This is where you could create an OpenGL ES 1.x compatible
@@ -110,6 +94,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        bandpass.setExtrapolation(BandPassFilter.Extrapolation.ZERO_SLOPE);
 
         setContentView(R.layout.activity_main);
         GL_go();
@@ -164,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         _receiveView.join(500);
     }
 
-
+    // Regular plot viewer (old)
     private Runnable _doReceive = new Runnable() {
         @Override
         public void run() {
@@ -184,6 +169,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 
                     dataR = genFunc.TransPose(dataS, cnT, S_cnT, C_cnT);
+
                     //Looper.loop();
                     dataPoints = genFunc.ToPoints(dataR,0, S_cnT);
                     goAnal = true;
@@ -223,6 +209,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     try {
                         goView = false;
                         dataV = dataR;
+                        Log.d("channel length", String.valueOf(dataV[0].length));
+
+                        bandpass.apply(dataR[10],dataShader);
+
+                        Log.d("filtered signal", String.valueOf(dataShader[0]));
+                        Log.d("filtered signal", String.valueOf(dataR[10][0]));
                         cnW = cnT;
                         goView = true;
                         // Anal (dataR, cnT);
@@ -233,8 +225,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 public void run(){
                                     String message = _tvState.getText().toString();
                                     message = Integer.toString(cnT);
-                                    totest = (float) cnT/2000;
-                                    _tvState.setText(message);
+
+                                    //_tvState.setText(message);
                                 }
                             };
                             mainHandler.post(myRunnable);
