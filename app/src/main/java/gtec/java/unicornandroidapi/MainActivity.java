@@ -33,6 +33,8 @@ import edu.mines.jtk.ogl.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.ogl.Gl.*;
 import static edu.mines.jtk.util.ArrayMath.*;
+import com.google.oboe.*;
+
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -98,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bandpass.setExtrapolation(BandPassFilter.Extrapolation.ZERO_SLOPE);
 
         setContentView(R.layout.activity_main);
-        GL_go();
+        //GL_go();
 
         try{
             _context = this.getApplicationContext();

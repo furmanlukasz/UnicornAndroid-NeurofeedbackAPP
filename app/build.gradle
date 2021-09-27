@@ -37,7 +37,9 @@ dependencies {
     implementation 'com.jjoe64:graphview:4.2.2'
 
     implementation project(path: ':unicorn')
+    implementation project(path: ':oboe')
     implementation files('libs\\edu-mines-jtk-1.1.0.jar')
+    //implementation 'com.google.oboe:oboe:1.6.1'
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
