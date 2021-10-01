@@ -4,7 +4,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.ActivityManager;
 import android.content.pm.ConfigurationInfo;
 import android.content.Context;
+import android.media.AudioManager;
 import android.opengl.GLSurfaceView;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,16 +16,23 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.SimpleAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
+
 import gtec.java.unicorn.Unicorn;
 import neuro.tools.unicorn.GenericFunctions;
 import static java.lang.Math.addExact;
@@ -33,8 +42,6 @@ import edu.mines.jtk.ogl.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.ogl.Gl.*;
 import static edu.mines.jtk.util.ArrayMath.*;
-import com.google.oboe.*;
-
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -68,31 +75,187 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     GenericFunctions genFunc = new GenericFunctions();
     BandPassFilter bandpass = new BandPassFilter(0.0,0.45,0.1,0.01);
 
-    public GLSurfaceView glSurfaceView;
+    // Audio
+    private static final long UPDATE_LATENCY_EVERY_MILLIS = 1000;
+    private static final Integer[] CHANNEL_COUNT_OPTIONS = {1, 2, 3, 4, 5, 6, 7, 8};
+    // Default to Stereo (OPTIONS is zero-based array so index 1 = 2 channels)
+    private static final int CHANNEL_COUNT_DEFAULT_OPTION_INDEX = 1;
+    private static final int[] BUFFER_SIZE_OPTIONS = {0, 1, 2, 4, 8};
+    private static final String[] AUDIO_API_OPTIONS = {"Unspecified", "OpenSL ES", "AAudio"};
+    // Default all other spinners to the first option on the list
+    private static final int SPINNER_DEFAULT_OPTION_INDEX = 0;
+    private Spinner mAudioApiSpinner;
+    private AudioDeviceSpinner mPlaybackDeviceSpinner;
+    private Spinner mChannelCountSpinner;
+    private Spinner mBufferSizeSpinner;
+    private TextView mLatencyText;
+    private Timer mLatencyUpdater;
 
+    //public GLSurfaceView glSurfaceView;
 
-    void GL_go() {
-        setContentView(R.layout.activity_main);
-        //glSurfaceView.setEGLContextClientVersion(2);
-        glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_layout);
-        final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
-        float mmInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 30, getResources().getDisplayMetrics());
-        ViewGroup.LayoutParams layoutParams= new ViewGroup.LayoutParams((int) 300,(int) 300);
+//    void GL_go() {
+//        setContentView(R.layout.activity_main);
+//        //glSurfaceView.setEGLContextClientVersion(2);
+//        glSurfaceView = (GLSurfaceView) findViewById(R.id.gl_layout);
+//        final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+//        final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
+//        float mmInPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_MM, 30, getResources().getDisplayMetrics());
+//        ViewGroup.LayoutParams layoutParams= new ViewGroup.LayoutParams((int) 300,(int) 300);
+//
+//        if (configurationInfo.reqGlEsVersion >= 0x20000) {
+//            // Request an OpenGL ES 2.0 compatible context.
+//            glSurfaceView.setEGLContextClientVersion(2);
+//            glSurfaceView.setRenderer(new Renderer_frag());
+//            //setContentView(glSurfaceView, layoutParams);
+//        } else {
+//            // This is where you could create an OpenGL ES 1.x compatible
+//            // renderer if you wanted to support both ES 1 and ES 2.
+//        }
+//    }
 
-        if (configurationInfo.reqGlEsVersion >= 0x20000) {
-            // Request an OpenGL ES 2.0 compatible context.
-            glSurfaceView.setEGLContextClientVersion(2);
-            glSurfaceView.setRenderer(new Renderer_frag());
-            //setContentView(glSurfaceView, layoutParams);
-        } else {
-            // This is where you could create an OpenGL ES 1.x compatible
-            // renderer if you wanted to support both ES 1 and ES 2.
+   private Runnable makeSound = new Runnable() {
+       @Override
+       public void run() {
+           Log.w("MainActivity", "Will make sound!");
+           PlaybackEngine.setToneOn(true);
+           Log.w("MainActivity", "Made sound!");
+           try {
+               Thread.sleep(300);
+           }
+           catch(InterruptedException e){
+               Log.w("MainActivity", "Caught exception while sleeping");
+           }
+           PlaybackEngine.setToneOn(false);
+       }
+   };
+
+    private void setupChannelCountSpinner() {
+        mChannelCountSpinner = findViewById(R.id.channelCountSpinner);
+
+        ArrayAdapter<Integer> channelCountAdapter = new ArrayAdapter<Integer>(this, R.layout.channel_counts_spinner, CHANNEL_COUNT_OPTIONS);
+        mChannelCountSpinner.setAdapter(channelCountAdapter);
+        mChannelCountSpinner.setSelection(CHANNEL_COUNT_DEFAULT_OPTION_INDEX);
+
+        mChannelCountSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                PlaybackEngine.setChannelCount(CHANNEL_COUNT_OPTIONS[mChannelCountSpinner.getSelectedItemPosition()]);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+    }
+
+    private List<HashMap<String, String>> createBufferSizeOptionsList() {
+
+        ArrayList<HashMap<String, String>> bufferSizeOptions = new ArrayList<>();
+
+        for (int i : BUFFER_SIZE_OPTIONS) {
+            HashMap<String, String> option = new HashMap<>();
+            String strValue = String.valueOf(i);
+            String description = (i == 0) ? getString(R.string.automatic) : strValue;
+            option.put(getString(R.string.buffer_size_description_key), description);
+            option.put(getString(R.string.buffer_size_value_key), strValue);
+
+            bufferSizeOptions.add(option);
+        }
+
+        return bufferSizeOptions;
+    }
+
+    private void setupBufferSizeSpinner() {
+        mBufferSizeSpinner = findViewById(R.id.bufferSizeSpinner);
+        mBufferSizeSpinner.setAdapter(new SimpleAdapter(
+                this,
+                createBufferSizeOptionsList(), // list of buffer size options
+                R.layout.buffer_sizes_spinner, // the xml layout
+                new String[]{getString(R.string.buffer_size_description_key)}, // field to display
+                new int[]{R.id.bufferSizeOption} // View to show field in
+        ));
+
+        mBufferSizeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                PlaybackEngine.setBufferSizeInBursts(getBufferSizeInBursts());
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+    }
+
+    private int getBufferSizeInBursts() {
+        @SuppressWarnings("unchecked")
+        HashMap<String, String> selectedOption = (HashMap<String, String>)
+                mBufferSizeSpinner.getSelectedItem();
+
+        String valueKey = getString(R.string.buffer_size_value_key);
+
+        // parseInt will throw a NumberFormatException if the string doesn't contain a valid integer
+        // representation. We don't need to worry about this because the values are derived from
+        // the BUFFER_SIZE_OPTIONS int array.
+        return Integer.parseInt(selectedOption.get(valueKey));
+    }
+
+    private void setupPlaybackDeviceSpinner() {
+        mPlaybackDeviceSpinner = findViewById(R.id.playbackDevicesSpinner);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            mPlaybackDeviceSpinner.setDirectionType(AudioManager.GET_DEVICES_OUTPUTS);
+            mPlaybackDeviceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    PlaybackEngine.setAudioDeviceId(getPlaybackDeviceId());
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+                }
+            });
         }
     }
 
+    private int getPlaybackDeviceId() {
+        return ((AudioDeviceListEntry) mPlaybackDeviceSpinner.getSelectedItem()).getId();
+    }
 
+    private void setupAudioApiSpinner() {
+        mAudioApiSpinner = findViewById(R.id.audioApiSpinner);
+        mAudioApiSpinner.setAdapter(new SimpleAdapter(
+                this,
+                createAudioApisOptionsList(),
+                R.layout.audio_apis_spinner, // the xml layout
+                new String[]{getString(R.string.audio_api_description_key)}, // field to display
+                new int[]{R.id.audioApiOption} // View to show field in
+        ));
 
+        mAudioApiSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                PlaybackEngine.setAudioApi(i);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+    }
+
+    private List<HashMap<String, String>> createAudioApisOptionsList() {
+
+        ArrayList<HashMap<String, String>> audioApiOptions = new ArrayList<>();
+
+        for (int i = 0; i < AUDIO_API_OPTIONS.length; i++) {
+            HashMap<String, String> option = new HashMap<>();
+            option.put(getString(R.string.buffer_size_description_key), AUDIO_API_OPTIONS[i]);
+            option.put(getString(R.string.buffer_size_value_key), String.valueOf(i));
+            audioApiOptions.add(option);
+        }
+        return audioApiOptions;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +263,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bandpass.setExtrapolation(BandPassFilter.Extrapolation.ZERO_SLOPE);
 
         setContentView(R.layout.activity_main);
+
+        //Sound
+        //mLatencyText = findViewById(R.id.latencyText);
+        setupAudioApiSpinner();
+        setupPlaybackDeviceSpinner();
+        setupChannelCountSpinner();
+        setupBufferSizeSpinner();
+        //Should go to onResume!
+        Log.w("MainActivity", "Will create Playback Engine!");
+        PlaybackEngine.create(this);
+        Log.w("MainActivity", "Created Playback Engine!");
+        int result = PlaybackEngine.start();
+        if (result != 0) {
+            Log.w("MainActivity", "Could not start playback engine!");
+        }
+
         //GL_go();
 
         try{
@@ -372,6 +551,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v)
     {
+        Thread _beepThread = new Thread(makeSound);
+        _beepThread.start();
         switch (v.getId())
         {
             case R.id.btnConnect:
@@ -393,4 +574,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     }
+
 }

@@ -39,6 +39,38 @@
             android:layout_width="399dp"
             android:layout_height="297dp" />
 
+        <Spinner
+            android:id="@+id/audioApiSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginLeft="16dp"
+            android:layout_gravity="center_vertical"/>
+
+        <gtec.java.unicornandroidapi.AudioDeviceSpinner
+            android:id="@+id/playbackDevicesSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginLeft="16dp"
+            android:layout_gravity="center_vertical"/>
+
+        <Spinner
+            android:id="@+id/channelCountSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_gravity="center_vertical"/>
+
+        <Spinner
+            android:id="@+id/bufferSizeSpinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_gravity="center_vertical"/>
 
     </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
